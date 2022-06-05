@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿namespace Pups.Backend.Api.Models;
 
-namespace Pups.Backend.Api.Models
+public partial class ChatStatus
 {
-    public partial class ChatStatus
-    {
-        public int Id { get; set; }
-        public string Title { get; set; } = null!;
-    }
+    public int Id { get; set; }
+    public string Title { get; set; } = null!;
 }

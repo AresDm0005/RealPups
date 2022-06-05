@@ -9,7 +9,7 @@ using Pups.Backend.Api.Data;
 
 #nullable disable
 
-namespace Pups.Backend.Api.Migrations
+namespace Pups.Backend.Api.Data.Migrations
 {
     [DbContext(typeof(MessengerContext))]
     [Migration("20220604201051_id_tweaks")]

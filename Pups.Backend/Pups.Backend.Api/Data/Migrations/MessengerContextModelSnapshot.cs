@@ -8,7 +8,7 @@ using Pups.Backend.Api.Data;
 
 #nullable disable
 
-namespace Pups.Backend.Api.Migrations
+namespace Pups.Backend.Api.Data.Migrations
 {
     [DbContext(typeof(MessengerContext))]
     partial class MessengerContextModelSnapshot : ModelSnapshot
