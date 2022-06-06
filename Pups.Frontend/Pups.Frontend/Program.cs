@@ -3,15 +3,17 @@ using Microsoft.EntityFrameworkCore;
 using Pups.Frontend.Data;
 
 var builder = WebApplication.CreateBuilder(args);
+var connectionString = builder.Configuration.GetConnectionString("IdentityContext") 
+    ?? throw new InvalidOperationException("Connection string 'IdentityContext' not found.");
 
-// Add services to the container.
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
+builder.Services.AddDbContext<IdentityContext>(options =>
     options.UseSqlServer(connectionString));
-builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
-    .AddEntityFrameworkStores<ApplicationDbContext>();
+    .AddEntityFrameworkStores<IdentityContext>();
+
+// Add services to the container.
+builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
