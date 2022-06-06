@@ -8,6 +8,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Text.Encodings.Web;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
@@ -18,6 +19,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
+using Pups.Frontend.Models.Domain.Dtos;
 
 namespace Pups.Frontend.Areas.Identity.Pages.Account
 {
@@ -29,13 +31,15 @@ namespace Pups.Frontend.Areas.Identity.Pages.Account
         private readonly IUserEmailStore<IdentityUser> _emailStore;
         private readonly ILogger<RegisterModel> _logger;
         private readonly IEmailSender _emailSender;
+        private readonly IHttpClientFactory _clientFactory;
 
         public RegisterModel(
             UserManager<IdentityUser> userManager,
             IUserStore<IdentityUser> userStore,
             SignInManager<IdentityUser> signInManager,
             ILogger<RegisterModel> logger,
-            IEmailSender emailSender)
+            IEmailSender emailSender, 
+            IHttpClientFactory client)
         {
             _userManager = userManager;
             _userStore = userStore;
@@ -43,6 +47,7 @@ namespace Pups.Frontend.Areas.Identity.Pages.Account
             _signInManager = signInManager;
             _logger = logger;
             _emailSender = emailSender;
+            _clientFactory = client;
         }
 
         /// <summary>
@@ -101,6 +106,10 @@ namespace Pups.Frontend.Areas.Identity.Pages.Account
             [Display(Name = "Confirm password")]
             [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
             public string ConfirmPassword { get; set; }
+
+            [StringLength(300, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 0)]
+            [Display(Name = "Info/bio")]
+            public string Info { get; set; }
         }
 
 
@@ -138,6 +147,8 @@ namespace Pups.Frontend.Areas.Identity.Pages.Account
                     await _emailSender.SendEmailAsync(Input.Email, "Confirm your email",
                         $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
 
+                    await SendApiCreateUserRequest(userId);
+
                     if (_userManager.Options.SignIn.RequireConfirmedAccount)
                     {
                         return RedirectToPage("RegisterConfirmation", new { email = Input.Email, returnUrl = returnUrl });
@@ -156,6 +167,26 @@ namespace Pups.Frontend.Areas.Identity.Pages.Account
 
             // If we got this far, something failed, redisplay form
             return Page();
+        }
+
+        private async Task SendApiCreateUserRequest(string userId)
+        {
+            using HttpClient client = _clientFactory.CreateClient("api");
+
+            var createUserDto = new CreateUserDto
+            {
+                Id = Guid.Parse(userId),
+                Username = Input.UserName,
+                Email = Input.Email,
+                Info = Input.Info
+            };
+
+            var user = JsonSerializer.Serialize(createUserDto);
+
+            var requestBody = new StringContent(user, Encoding.UTF8, "application/json");
+
+            var response = await client.PostAsync("Users", requestBody);
+            response.EnsureSuccessStatusCode();
         }
 
         private IdentityUser CreateUser()
