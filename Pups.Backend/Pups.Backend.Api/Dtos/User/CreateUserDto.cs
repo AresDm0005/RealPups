@@ -5,6 +5,11 @@ namespace Pups.Backend.Api.Dtos.User;
 public record CreateUserDto
 {
     /// <summary>
+    /// ID пользователя
+    /// </summary>
+    /// <example>abcd1234-ab12-ab12-ab12-abcdef123456</example>
+    public Guid Id { get; init; }
+    /// <summary>
     /// Имя создаваемого пользователя
     /// </summary>
     /// <example>Kolya12345</example>
