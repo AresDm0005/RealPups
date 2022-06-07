@@ -4,7 +4,7 @@ using Pups.Frontend.Data;
 using System.Net.Http.Headers;
 
 var builder = WebApplication.CreateBuilder(args);
-var connectionString = builder.Configuration.GetConnectionString("IdentityContext") 
+var connectionString = builder.Configuration.GetConnectionString("AzureIdentityContext") 
     ?? throw new InvalidOperationException("Connection string 'IdentityContext' not found.");
 
 builder.Services.AddDbContext<IdentityContext>(options =>
