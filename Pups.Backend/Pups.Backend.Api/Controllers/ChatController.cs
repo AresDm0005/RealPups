@@ -99,7 +99,7 @@ public class ChatsController : ControllerBase
     /// <response code="201">Чат создан</response>
     /// <response code="400">Переданы некорректные данные</response>
     /// <response code="404">Пользователь с переданным ID не существует</response>
-    [HttpPost("/Solo")]
+    [HttpPost("/Chats/Solo")]
     [SwaggerResponse((int)HttpStatusCode.Created, Type = typeof(ChatDto))]
     [SwaggerResponse((int)HttpStatusCode.BadRequest)]
     [SwaggerResponse((int)HttpStatusCode.NotFound)]
@@ -148,7 +148,7 @@ public class ChatsController : ControllerBase
     /// <response code="201">Чат создан</response>
     /// <response code="400">Переданы некорректные данные</response>
     /// <response code="404">Пользователь(-и) с переданным(-и) ID не существует(-ют)</response>
-    [HttpPost("/Сhat")]
+    [HttpPost("/Chats/Сhat")]
     [SwaggerResponse((int)HttpStatusCode.Created, Type = typeof(ChatDto))]
     [SwaggerResponse((int)HttpStatusCode.BadRequest)]
     [SwaggerResponse((int)HttpStatusCode.NotFound)]
@@ -213,7 +213,7 @@ public class ChatsController : ControllerBase
     /// <response code="201">Беседа создана</response>
     /// <response code="400">Переданы некорректные данные</response>
     /// <response code="404">Один или больше пользователей не найдено</response>
-    [HttpPost("/Group")]
+    [HttpPost("/Chats/Group")]
     [SwaggerResponse((int)HttpStatusCode.Created, Type = typeof(ChatDto))]
     [SwaggerResponse((int)HttpStatusCode.BadRequest)]
     [SwaggerResponse((int)HttpStatusCode.NotFound)]
