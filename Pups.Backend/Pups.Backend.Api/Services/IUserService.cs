@@ -9,4 +9,5 @@ public interface IUserService
     Task CreateUser(User user);
     Task UpdateUser(User user);
     Task<bool> DoesUserExist(Guid userId);
+    Task<bool> IsUserNameNew(string userName);
 }

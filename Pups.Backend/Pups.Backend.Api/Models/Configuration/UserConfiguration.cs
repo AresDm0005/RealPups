@@ -17,9 +17,11 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasColumnType("datetime")
             .HasColumnName("created");
 
-        builder.Property(e => e.Email).HasColumnName("email");
+        builder.Property(e => e.Email)
+            .HasColumnName("email");
 
-        builder.Property(e => e.Info).HasColumnName("info");
+        builder.Property(e => e.Info)
+            .HasColumnName("info");
 
         builder.Property(e => e.LastSeen)
             .HasColumnType("datetime")
@@ -28,5 +30,8 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(e => e.Username)
             .HasMaxLength(50)
             .HasColumnName("username");
+
+        builder.HasIndex(e => e.Username)
+            .IsUnique();
     }
 }

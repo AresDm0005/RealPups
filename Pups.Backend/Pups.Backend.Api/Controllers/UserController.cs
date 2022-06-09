@@ -16,11 +16,13 @@ namespace Pups.Backend.Api.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
+    private readonly IIdentityInfoService _identityInfoService;
 
     /// <inheritdoc/>
-    public UsersController(IUserService userService)
+    public UsersController(IUserService userService, IIdentityInfoService identityInfoService)
     {
         _userService = userService;
+        _identityInfoService = identityInfoService;
     }
 
     // GET /users
@@ -61,11 +63,13 @@ public class UsersController : ControllerBase
 
     // POST /users
     /// <summary>
-    /// Создать нового пользователя
+    /// Создать нового пользователя в контексте приложения
+    /// после создания в Identity модуле
     /// </summary>
     /// <param name="userDto">Данные необходимые для создания пользователя</param>
     /// <returns></returns>
     /// <response code="201">Пользователь создан</response>
+    /// <response code="400">Пользователь с переданным ID/Username уже существует</response>
     [HttpPost]
     [SwaggerResponse((int)HttpStatusCode.Created, Type = typeof(UserDto))]
     public async Task<ActionResult<UserDto>> CreateUser([FromBody, BindRequired] CreateUserDto userDto)
@@ -81,6 +85,24 @@ public class UsersController : ControllerBase
             Created = DateTime.UtcNow,
             LastSeen = DateTime.UtcNow
         };
+        
+        if (await _userService.DoesUserExist(userDto.Id))
+        {
+            await _identityInfoService.DeleteConflictingUser(userDto.Id);
+            return BadRequest("Пользователь уже существует в приложении");
+        }
+
+        if (!await _userService.IsUserNameNew(userDto.Username))
+        {
+            await _identityInfoService.DeleteConflictingUser(userDto.Id);
+            return BadRequest("Переданное имя пользователя уже используется");
+        }
+
+        if (!await _identityInfoService.DoesUserExist(user))
+        {
+            await _identityInfoService.DeleteConflictingUser(userDto.Id);
+            return BadRequest("Пользователь не был создан в Identity модуле до вызова API");
+        }
 
         await _userService.CreateUser(user);
 

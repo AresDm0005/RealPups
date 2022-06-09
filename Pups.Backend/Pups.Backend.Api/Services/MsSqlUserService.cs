@@ -49,4 +49,9 @@ public class MsSqlUserService : IUserService
         _msgContext.Users.Update(existingUser);
         await _msgContext.SaveChangesAsync();
     }
+
+    public async Task<bool> IsUserNameNew(string userName)
+    {
+        return !(await _msgContext.Users.AnyAsync(x => x.Username == userName));
+    }
 }

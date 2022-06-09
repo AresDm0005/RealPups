@@ -7,8 +7,11 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 builder.Services.AddControllers();
-builder.Services.AddSqlServer<MessengerContext>(
-    builder.Configuration.GetConnectionString("AzureApiContext"));
+
+// AzureApiContext
+var connectionString = builder.Configuration.GetConnectionString("ApiContext");
+builder.Services.AddSqlServer<MessengerContext>(connectionString);
+builder.Services.AddSqlServer<IdentityContext>(connectionString);
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -27,6 +30,7 @@ builder.Services.AddTransient<IUserService, MsSqlUserService>();
 builder.Services.AddTransient<IChatService, MsSqlChatService>();
 builder.Services.AddTransient<IChatMemberService, MsSqlChatMemberService>();
 builder.Services.AddTransient<IMessageService, MsSqlMessageService>();
+builder.Services.AddTransient<IIdentityInfoService, MsSqlIdentityInfoService>();
 
 var app = builder.Build();
 
