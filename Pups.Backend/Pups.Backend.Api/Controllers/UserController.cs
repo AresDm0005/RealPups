@@ -116,6 +116,7 @@ public class UsersController : ControllerBase
     /// <param name="id" example="abcd1234-ab12-ab12-ab12-abcdef123456">ID пользователя</param>
     /// <param name="userDto">Измененные данные</param>
     /// <response code="204">Пользователь обновлен</response>
+    /// <response code="400">Имя пользователя не уникально или произошла ошибка при его обновлении</response>
     /// <response code="404">Пользователя с данным ID не найдено</response>
     [HttpPut("{id}")]
     [SwaggerResponse((int)HttpStatusCode.NoContent)]
@@ -126,6 +127,16 @@ public class UsersController : ControllerBase
 
         if (existingUser is null)
             return NotFound();
+
+        if (userDto.Username != null && !existingUser.Username.Equals(userDto.Username)) { 
+            if (await _userService.IsUserNameNew(userDto.Username))
+            {
+                if (!await _identityInfoService.UpdateUsername(existingUser.Id, userDto.Username))
+                {
+                    return BadRequest("Failed to update Identity Username");
+                }
+            } else return BadRequest("Username is not unique");
+        }
 
         User user = new()
         {
