@@ -11,4 +11,5 @@ public partial class User
 
     public virtual ICollection<ChatMember>? Memberships { get; set; }
     public virtual ICollection<Message>? Messages { get; set; }
+    public virtual ICollection<Chat>? CreatedChats { get; set; }
 }

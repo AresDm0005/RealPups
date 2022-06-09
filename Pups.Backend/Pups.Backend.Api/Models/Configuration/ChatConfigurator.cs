@@ -13,12 +13,20 @@ public class ChatConfigurator : IEntityTypeConfiguration<Chat>
             .ValueGeneratedNever()
             .HasColumnName("id");
 
+        builder.Property(e => e.CreatorId)
+            .HasColumnName("creator_id");
+
         builder.Property(e => e.CreatedAt)
             .HasColumnType("datetime")
             .HasColumnName("created_at");
 
         builder.Property(e => e.TypeId)
             .HasColumnName("type_id");
+
+        builder.HasOne(d => d.Creator)
+            .WithMany(p => p.CreatedChats)
+            .HasForeignKey(d => d.CreatorId)
+            .HasConstraintName("FK_Chat_User");
 
         builder.HasOne(d => d.Type)
             .WithMany(p => p.Chats)

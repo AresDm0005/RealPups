@@ -87,27 +87,151 @@ public class ChatsController : ControllerBase
         return Ok(chats);
     }
 
-    // POST /chats
+    // POST /chats/solo
     /// <summary>
-    /// Создать новый чат
+    /// Создать соло беседу (a-la saved messages).
     /// </summary>
-    /// <param name="chatDto">Данные необходимые для создания нового чата</param>
-    /// <returns></returns>
+    /// <remarks>
+    /// Вызывается единожды для каждого пользователя при его создании.
+    /// </remarks>
+    /// <param name="soloChatDto">ID пользователя и сопутсвующие данные</param>
+    /// <returns>Объект созданного чата (включая данные об участниках)</returns>
     /// <response code="201">Чат создан</response>
     /// <response code="400">Переданы некорректные данные</response>
-    /// <response code="404">Один или больше пользователей не найдено</response>
-    [HttpPost]
+    /// <response code="404">Пользователь с переданным ID не существует</response>
+    [HttpPost("/Solo")]
+    [SwaggerResponse((int)HttpStatusCode.Created, Type = typeof(ChatDto))]
+    [SwaggerResponse((int)HttpStatusCode.BadRequest)]
+    [SwaggerResponse((int)HttpStatusCode.NotFound)]
+    public async Task<ActionResult<ChatDto>> CreateSoloChannel([FromBody, BindRequired] CreateSoloChatDto soloChatDto)
+    {
+        if (!await _userService.DoesUserExist(soloChatDto.CreatorId))
+            return NotFound();
+
+        if (!await _chatService.DoesChatExistWithMembers(new List<Guid> { soloChatDto.CreatorId }))
+            return BadRequest();
+
+        var chat = new Chat
+        {
+            Id = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+            TypeId = (int)ChatTypes.Solo
+        };
+
+        var chatMembers = new List<ChatMember>
+        {
+            new ChatMember
+            {
+                ChatId = chat.Id,
+                UserId = soloChatDto.CreatorId,
+                ChatName = "In my mind",
+                ChatStatusId = (int)ChatStatuses.Common                
+            }
+        };
+
+        await _chatService.CreateChatAndMembers(chat, chatMembers);
+
+        return CreatedAtAction(nameof(GetChat),
+            new { id = Guid.NewGuid(), includeMembers = true },
+            chat.AsDto());
+    }
+
+    // POST /chats/chat
+    /// <summary>
+    /// Создать чат между 2-мя пользователями
+    /// </summary>
+    /// <remarks>
+    /// В приложении может быть только 1 не групповой чат между 2-мя пользователями
+    /// </remarks>
+    /// <param name="chatDto">Данные для создания чата</param>
+    /// <returns>Объект созданного чата (включая данные об участниках)</returns>
+    /// <response code="201">Чат создан</response>
+    /// <response code="400">Переданы некорректные данные</response>
+    /// <response code="404">Пользователь(-и) с переданным(-и) ID не существует(-ют)</response>
+    [HttpPost("/Сhat")]
     [SwaggerResponse((int)HttpStatusCode.Created, Type = typeof(ChatDto))]
     [SwaggerResponse((int)HttpStatusCode.BadRequest)]
     [SwaggerResponse((int)HttpStatusCode.NotFound)]
     public async Task<ActionResult<ChatDto>> CreateChat([FromBody, BindRequired] CreateChatDto chatDto)
     {
-        if (chatDto.MembersIds.Count() == 0)
+        if (!await _userService.DoesUserExist(chatDto.CreatorId)
+            || !await _userService.DoesUserExist(chatDto.ContactId))
+            return NotFound();
+
+        var userIds = new List<Guid> { chatDto.CreatorId, chatDto.ContactId };
+
+        if (!await _chatService.DoesChatExistWithMembers(userIds))
             return BadRequest();
 
+        if (chatDto.CreatorChatStatusId != null && 
+            (chatDto.CreatorChatStatusId < 1 || chatDto.CreatorChatStatusId > 4))
+            return BadRequest();
+
+        var chat = new Chat
+        {
+            Id = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+            TypeId = (int)ChatTypes.Chat
+        };
+
+        var userNames = userIds
+            .Select(async userId => (await _userService.GetUser(userId))!.Username!)
+            .Select(x => x.Result)
+            .ToList();
+
+        var chatMembers = new List<ChatMember>
+        {
+            new ChatMember
+            {
+                ChatId = chat.Id,
+                UserId = chatDto.CreatorId,
+                ChatName = chatDto.CreatorChatName ?? userNames[1],
+                ChatStatusId = chatDto.CreatorChatStatusId ?? (int)ChatStatuses.Common
+            },
+            new ChatMember
+            {
+                ChatId = chat.Id,
+                UserId = chatDto.ContactId,
+                ChatName = userNames[0],
+                ChatStatusId = (int)ChatStatuses.Common
+            }
+        };
+
+        await _chatService.CreateChatAndMembers(chat, chatMembers);
+
+        return CreatedAtAction(nameof(GetChat),
+            new { id = Guid.NewGuid(), includeMembers = true },
+            chat.AsDto());
+    }
+
+    // POST /chats/group
+    /// <summary>
+    /// Создать новую беседу
+    /// </summary>
+    /// <param name="groupDto">Данные необходимые для создания новой беседы</param>
+    /// <returns>Объект созданной беседы (включая данные об участниках)</returns>
+    /// <response code="201">Беседа создана</response>
+    /// <response code="400">Переданы некорректные данные</response>
+    /// <response code="404">Один или больше пользователей не найдено</response>
+    [HttpPost("/Group")]
+    [SwaggerResponse((int)HttpStatusCode.Created, Type = typeof(ChatDto))]
+    [SwaggerResponse((int)HttpStatusCode.BadRequest)]
+    [SwaggerResponse((int)HttpStatusCode.NotFound)]
+    public async Task<ActionResult<ChatDto>> CreateChat([FromBody, BindRequired] CreateGroupDto groupDto)
+    {
+        if (groupDto.MembersIds.Count == 0)
+            return BadRequest();
+
+        if (groupDto.CreatorChatStatusId != null &&
+            (groupDto.CreatorChatStatusId < 1 || groupDto.CreatorChatStatusId > 4))
+            return BadRequest();
+
+        if (groupDto.MembersIds.Contains(groupDto.CreatorId))
+            groupDto.MembersIds.Remove(groupDto.CreatorId);
+
         var cts = new CancellationTokenSource();
-        bool userDontExist = false;
-        await Parallel.ForEachAsync(chatDto.MembersIds, cts.Token, 
+        bool userDontExist = await _userService.DoesUserExist(groupDto.CreatorId);
+        await Parallel.ForEachAsync(groupDto.MembersIds, cts.Token,
                 async (userId, token) =>
                 {
                     if (!await _userService.DoesUserExist(userId))
@@ -120,38 +244,32 @@ public class ChatsController : ControllerBase
         if (userDontExist)
             return NotFound();
 
-        var type = chatDto.MembersIds.Count() switch
-        {
-            1 => ChatTypes.Solo,
-            2 => ChatTypes.Chat,
-            _ => ChatTypes.Group
-        };
-
-        if (type != ChatTypes.Group 
-            && await _chatService.DoesChatExistWithMembers(chatDto.MembersIds))
-        {
-            return BadRequest();
-        }
-
         var chat = new Chat()
         {
             Id = Guid.NewGuid(),
             CreatedAt = DateTime.UtcNow,
-            TypeId = ((int)type)
+            TypeId = (int)ChatTypes.Group
         };
 
-        var chatMembers = chatDto.MembersIds
+        var chatMembers = groupDto.MembersIds
             .Select(userId => new ChatMember
-            {
-                ChatId = chat.Id,
-                UserId = userId,
-                ChatName = null,
-                ChatStatusId = (int)ChatStatuses.Common
-            });
+                {
+                    ChatId = chat.Id,
+                    UserId = userId,
+                    ChatName = groupDto.GroupName,
+                    ChatStatusId = (int)ChatStatuses.Common
+                })
+            .Append(new ChatMember
+                {
+                    ChatId = chat.Id,
+                    UserId = groupDto.CreatorId,
+                    ChatName = groupDto.GroupName,
+                    ChatStatusId = groupDto.CreatorChatStatusId ?? (int)ChatStatuses.Common
+                });
 
         await _chatService.CreateChatAndMembers(chat, chatMembers);
 
-        return CreatedAtAction(nameof(GetChat), 
+        return CreatedAtAction(nameof(GetChat),
             new { id = Guid.NewGuid(), includeMembers = true },
             chat.AsDto());
     }
