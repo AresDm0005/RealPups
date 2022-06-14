@@ -44,8 +44,8 @@ public class MsSqlChatService : IChatService
 
     public async Task CreateChatAndMembers(Chat chat, IEnumerable<ChatMember> chatMembers)
     {
-        _msgContext.Add(chat);
-        _msgContext.AddRange(chatMembers);
+        _msgContext.Chats.Add(chat);
+        _msgContext.ChatMembers.AddRange(chatMembers);
         await _msgContext.SaveChangesAsync();
     }
 

@@ -1,0 +1,21 @@
+{
+  "dependencies": {
+    "apis1": {
+      "apiEndpoint": "https://context-api.azure-api.net/",
+      "resourceId": "/subscriptions/[parameters('subscriptionId')]/resourceGroups/[parameters('resourceGroupName')]/providers/Microsoft.ApiManagement/service/context-api/apis/PupsBackendApi",
+      "type": "apis.azure"
+    },
+    "mssql1": {
+      "ignored": "true",
+      "suggestion": "true",
+      "type": "mssql",
+      "connectionId": "ConnectionStrings:ApiContext"
+    },
+    "mssql2": {
+      "secretStore": null,
+      "resourceId": "/subscriptions/[parameters('subscriptionId')]/resourceGroups/[parameters('resourceGroupName')]/providers/Microsoft.Sql/servers/pups/databases/messenger",
+      "type": "mssql.azure",
+      "connectionId": "ConnectionStrings:AzureApiContext"
+    }
+  }
+}

@@ -108,14 +108,15 @@ public class ChatsController : ControllerBase
         if (!await _userService.DoesUserExist(soloChatDto.CreatorId))
             return NotFound();
 
-        if (!await _chatService.DoesChatExistWithMembers(new List<Guid> { soloChatDto.CreatorId }))
+        if (await _chatService.DoesChatExistWithMembers(new List<Guid> { soloChatDto.CreatorId }))
             return BadRequest();
 
         var chat = new Chat
         {
             Id = Guid.NewGuid(),
             CreatedAt = DateTime.UtcNow,
-            TypeId = (int)ChatTypes.Solo
+            TypeId = (int)ChatTypes.Solo,
+            CreatorId = soloChatDto.CreatorId            
         };
 
         var chatMembers = new List<ChatMember>
@@ -160,7 +161,7 @@ public class ChatsController : ControllerBase
 
         var userIds = new List<Guid> { chatDto.CreatorId, chatDto.ContactId };
 
-        if (!await _chatService.DoesChatExistWithMembers(userIds))
+        if (await _chatService.DoesChatExistWithMembers(userIds))
             return BadRequest();
 
         if (chatDto.CreatorChatStatusId != null && 
@@ -171,7 +172,8 @@ public class ChatsController : ControllerBase
         {
             Id = Guid.NewGuid(),
             CreatedAt = DateTime.UtcNow,
-            TypeId = (int)ChatTypes.Chat
+            TypeId = (int)ChatTypes.Chat,
+            CreatorId = chatDto.CreatorId
         };
 
         var userNames = userIds
@@ -248,7 +250,8 @@ public class ChatsController : ControllerBase
         {
             Id = Guid.NewGuid(),
             CreatedAt = DateTime.UtcNow,
-            TypeId = (int)ChatTypes.Group
+            TypeId = (int)ChatTypes.Group,
+            CreatorId = groupDto.CreatorId
         };
 
         var chatMembers = groupDto.MembersIds
