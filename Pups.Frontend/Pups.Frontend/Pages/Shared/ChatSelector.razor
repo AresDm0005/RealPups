@@ -1,0 +1,27 @@
+<div class="card chat-card" style="width: 18rem;">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <span class="dot"></span>
+            </div>
+            <div class="col-md-6">
+                <h5 class="card-title">@Username</h5>
+                <p class="card-text">@Message</p>  
+            </div>
+            <div style="position: absolute; top: 10px; right: 0; width: 100px; text-align:right;">
+                @DateTime.Now.Hour : @DateTime.Now.Minute 
+            </div>
+            <div style="position: absolute; bottom: 10px; right: 10px; width: 100px; text-align:right;">
+                <span class="dot-seen"></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string Username { get; set; }
+    
+    [Parameter]
+    public string Message { get; set; }
+}

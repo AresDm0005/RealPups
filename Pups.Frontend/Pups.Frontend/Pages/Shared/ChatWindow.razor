@@ -1,0 +1,45 @@
+<div>
+    <div class="row" style="background: #b4dbe7; height: 50px; width: 100%">
+        <div style="right: 10px">
+            <!--i class="bi bi-arrow-left"></i-->
+            @userName
+            <span class="online">
+                Последний раз в сети @date.Hour:@date.Minute
+            </span>
+        </div>
+    </div>
+    <div style="height: 750px; width: 100%;">
+        <nav>
+            <ul style="list-style-type: none;">
+                @for (int i = 0; i < 20; ++i)
+                {
+                    if (i % 2 == 0)
+                    {
+                        <li class="self">Message @i</li>
+                    }
+                    else
+                    {
+                        <li class="other">Message @i</li>   
+                    }
+                }
+            </ul>
+        </nav>
+    </div>
+    
+    <div>
+        <div class="input-group mb-3">
+          <input type="text" class="form-control" placeholder="Text..." aria-label="Text..." aria-describedby="basic-addon2">
+          <div class="input-group-append">
+            <button class="btn btn-outline-secondary" type="button">Button</button>
+          </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string? Url { get; set; }
+
+    private string userName = "UserName";
+    private DateTime date = DateTime.Now;
+}
