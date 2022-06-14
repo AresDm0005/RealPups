@@ -1,37 +1,33 @@
 @using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.AspNetCore.Mvc.Rendering
 @inject NavigationManager NavigationManager
 @implements IAsyncDisposable
 
-<PageTitle>Index</PageTitle>
-
-<div class="form-group">
-    <label>
-        User:
-        <input @bind="_userInput" />
-    </label>
+<div class="row">
+    <nav class="col-md-3">
+        <ul class="chat-selector" style="list-style-type: none;">
+            @for (int i = 0; i < 10; ++i)
+            {
+                string message = $"Message{i}";
+                string username = $"Username{i}"; 
+                <li @onclick="() => SelectChat(i.ToString())"><ChatSelector Message=@message Username=@username ></ChatSelector></li>   
+            }
+        </ul>
+    </nav>
+    <div class="col-md-9">
+        @if (chatSelect)
+        {
+            <ChatWindow Url=@selectChatUrl></ChatWindow>
+        }
+        else
+        {
+            <canvas x="0" y="0" rx="5" ry="5" width="1000" height="800" style="fill:red;stroke:black;stroke-width:5;opacity:0.5;border:1px solid #000000;">
+            </canvas>
+        }
+    </div>
 </div>
-<div class="form-group">
-    <label>
-        Group:
-        <input @bind="_groupInput" size="50" />
-    </label>
-</div>
-<div class="form-group">
-    <label>
-        Message:
-        <input @bind="_messageInput" size="50" />
-    </label>
-</div>
-<button @onclick="Send" disabled="@(!IsConnected)">Send</button>
 
-<hr>
 
-<ul id="messagesList">
-    @foreach (var message in _messages)
-    {
-        <li>@message</li>
-    }
-</ul>
 
 @code {
     private HubConnection? _hubConnection;
@@ -40,7 +36,8 @@
     private string? _groupInput;
     private string? _messageInput;
     private bool IsConnected => _hubConnection?.State == HubConnectionState.Connected;
-    
+    private bool chatSelect = false;
+    private string? selectChatUrl = null;
     protected override async Task OnInitializedAsync()
     {
         _hubConnection = new HubConnectionBuilder()
@@ -79,5 +76,11 @@
         {
             await _hubConnection.DisposeAsync();
         }
+    }
+
+    public async Task SelectChat(string url)
+    {
+        chatSelect = true;
+        selectChatUrl = url;
     }
 }
