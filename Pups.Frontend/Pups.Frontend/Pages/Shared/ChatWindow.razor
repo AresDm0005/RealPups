@@ -21,7 +21,14 @@
             <ul class="message-list">
                 @foreach (var message in messageList)
                 {
-                    <li class="self">@message.Payload</li>
+                    if (message.SenderId == secondUser.Id)
+                    {
+                        <li class="others">@message.Payload</li>
+                    }
+                    else
+                    {
+                        <li class="self">@message.Payload</li>   
+                    }
                 }
             </ul>
         </nav>
@@ -48,7 +55,7 @@
     public List<ChatMember> Members { get; set; }
 
     private User? secondUser;
-    private List<Message> messageList = new List<Message>();
+    private List<Message>? messageList = new List<Message>();
     
     private void GetUser()
     {
@@ -63,21 +70,27 @@
         }
     }
     
+    private void GetMessages()
+    {
+        using (var client = ClientFactory.CreateClient("api"))
+        {
+            var responseUser = client.GetAsync($"/Messages/FromChat/{Url}").Result;
+            if (responseUser.IsSuccessStatusCode)
+            {
+                var res = responseUser.Content.ReadAsStringAsync().Result;
+                messageList = JsonConvert.DeserializeObject<List<Message>>(res);
+            }
+        }
+    }
+    
     protected override void OnInitialized()
     {
         if(Members.Count==2)
             GetUser();
-        
-        for (int i = 0; i < 25; ++i)
-        {
-            messageList.Add(new Message()
-            {
-                Payload = $"Message{i}"
-            });
-        }
+        GetMessages();
         base.OnInitialized();
     }
-
+    
     private string userMessage = "";
     
     private DateTime date = DateTime.Now;
