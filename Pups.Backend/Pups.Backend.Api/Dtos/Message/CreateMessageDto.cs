@@ -26,5 +26,5 @@ public record CreateMessageDto
     /// <summary>
     /// ID сообщения, на которое отвечает текущее
     /// </summary>
-    public int? ReplyTo { get; init; }
+    public int? ReplyTo { get; init; } = null!;
 }
