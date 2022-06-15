@@ -65,7 +65,7 @@ public class UsersController : ControllerBase
     /// <summary>
     /// Выполнить поиск по имени пользоваетеля
     /// </summary>
-    /// <param name="userName" example="Tesk">Имя пользователя</param>
+    /// <param name="userName" example="TestUserName">Имя пользователя</param>
     /// <returns>Пользователя</returns>
     /// <response code="200"></response>
     [HttpGet("FindUser/{userName}")]
