@@ -1,10 +1,19 @@
+@using Pups.Frontend.Models.Domain
+@using Pups.Frontend.Models.Domain.Dtos
+@using Newtonsoft.Json
+@inject IHttpClientFactory ClientFactory
+
 <div>
     <div class="row" style="background: #b4dbe7; height: 50px; width: 100%">
         <div style="right: 10px">
-            <strong>@userName</strong>
-            <span class="online">
-                Последний раз в сети @date.Hour:@date.Minute
-            </span>
+            <strong>@ChatName</strong>
+            @if (Members.Count == 2)
+            {
+                var online = secondUser.LastSeen;
+                <span class="online">
+                    Последний раз в сети @online.TimeOfDay
+                </span>   
+            }
         </div>
     </div>
     <div style="background: #ffffff; height: 750px; width: 100%;">
@@ -12,7 +21,7 @@
             <ul class="message-list">
                 @foreach (var message in messageList)
                 {
-                    <li class="self">@message</li>
+                    <li class="self">@message.Payload</li>
                 }
             </ul>
         </nav>
@@ -33,15 +42,38 @@
     public string? Url { get; set; }
 
     [Parameter]
-    public string userName { get; set; } = "UserName";
+    public string ChatName { get; set; } = "UserName";
+    
+    [Parameter]
+    public List<ChatMember> Members { get; set; }
 
-    public List<string> messageList = new List<string>();
+    private User? secondUser;
+    private List<Message> messageList = new List<Message>();
+    
+    private void GetUser()
+    {
+        using (var client = ClientFactory.CreateClient("api"))
+        {
+            var responseUser = client.GetAsync($"Users/{Members[1].UserId}").Result;
+            if (responseUser.IsSuccessStatusCode)
+            {
+                var res = responseUser.Content.ReadAsStringAsync().Result;
+                secondUser = JsonConvert.DeserializeObject<User>(res);
+            }
+        }
+    }
     
     protected override void OnInitialized()
     {
+        if(Members.Count==2)
+            GetUser();
+        
         for (int i = 0; i < 25; ++i)
         {
-            messageList.Add($"Message{i}");
+            messageList.Add(new Message()
+            {
+                Payload = $"Message{i}"
+            });
         }
         base.OnInitialized();
     }
@@ -53,7 +85,10 @@
     public void SendMessage()
     {
         if (userMessage == "") return;
-        messageList.Add(userMessage);
+        messageList.Add(new Message()
+        {
+            Payload = userMessage
+        });
         userMessage = "";
     }
 }

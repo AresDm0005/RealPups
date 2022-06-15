@@ -3,6 +3,9 @@
 @inject NavigationManager NavigationManager
 @inject IHttpClientFactory ClientFactory
 @using Microsoft.AspNetCore.Identity
+@using System.Security.Claims
+@using Newtonsoft.Json
+@using Pups.Frontend.Models.Domain.Dtos
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject SignInManager<IdentityUser> SignInManager
 @inject UserManager<IdentityUser> UserManager
@@ -17,18 +20,16 @@
                 </div>
             </div>
         <ul class="chat-selector" style="list-style-type: none;">
-            @for (int i = 0; i < 10; ++i)
+            @foreach (var chat in chatDictionary.Values)
             {
-                string message = $"Message{i}";
-                string username = $"Username{i}";
-                <li @onclick="() => SelectChat(i.ToString())"><ChatSelector Message=@message Username=@username></ChatSelector></li>
+                <li @onclick="() => SelectChat(chat.Id.ToString())"><ChatSelector Message=@chat.Message Username=@chat.ChatName></ChatSelector></li>
             }
         </ul>
     </nav>
     <div class="col-md-9">
         @if (chatSelect)
         {
-            <ChatWindow Url=@selectChatUrl userName=@userName/>
+            <ChatWindow Url=@selectChatUrl.ToString() ChatName=@chatDictionary[selectChatUrl].ChatName Members=@chatDictionary[selectChatUrl].Members.ToList()/>
         }
         else
         {
@@ -48,24 +49,53 @@
     private string? _messageInput;
     private bool IsConnected => _hubConnection?.State == HubConnectionState.Connected;
     private bool chatSelect = false;
-    private string? selectChatUrl = null;
-    private string userName;
-
+    private Guid selectChatUrl;
+    private Dictionary<Guid, ChatPreview> chatDictionary = new  Dictionary<Guid, ChatPreview>();
     private List<Chat> chats;
 
     protected override async Task OnInitializedAsync()
     {
-    // chats = await callChatApi(userId);
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        Console.WriteLine(authState.User.Identities);
-        foreach (var claim in authState.User.Identities)
+        var userId = authState.User.Identities.Select(claimIdentity => claimIdentity.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.NameIdentifier)).FirstOrDefault();
+        
+        var chats = new Dictionary<Guid, chatDto>();
+        using (var client = ClientFactory.CreateClient("api"))
         {
-            Console.WriteLine(claim);   
+            var responseUserChats = await client.GetAsync($"Chats/UserChats/{userId.Value}");
+            if (responseUserChats.IsSuccessStatusCode)
+            {
+                var res = responseUserChats.Content.ReadAsStringAsync().Result;
+                var chatsList = JsonConvert.DeserializeObject<List<chatDto>>(res);
+                foreach (var chat in chatsList)
+                {
+                    var chatItemResponse = await client.GetAsync($"Chats/{chat.Id}?includeMembers=true");
+                    if (chatItemResponse.IsSuccessStatusCode)
+                    {
+                        var result = chatItemResponse.Content.ReadAsStringAsync().Result;
+                        var chatItem = JsonConvert.DeserializeObject<chatDto>(result);
+                        if(chatItem is not null)
+                            chats.Add(chatItem.Id, chatItem);
+                    }
+                }
+            }
         }
+        foreach (var chat in chats)
+        {
+            chatDictionary.Add(chat.Key, new ChatPreview()
+            {
+                Id = chat.Key,
+                ChatName = chat.Value.Members.ToList()[0].ChatName,
+                Message = new Message(), // TODO
+                Members = chat.Value.Members
+            });
+        }
+        
+        #region Hub
+
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(NavigationManager.ToAbsoluteUri("/chathub"))
             .Build();
-
+        
         _hubConnection.On<string, string>("ReceiveMessage", (user, message) =>
         {
             var encodedMsg = $"{user}: {message}";
@@ -79,6 +109,7 @@
             InvokeAsync(StateHasChanged);
         });
 
+        #endregion
 
         await _hubConnection.StartAsync();
     }
@@ -105,9 +136,7 @@
     public async Task SelectChat(string url)
     {
         chatSelect = true;
-        selectChatUrl = url;
-        var rnd = new Random();
-        userName = $"test{rnd.NextInt64(10)}";
+        selectChatUrl = new Guid(url);
     }
 
     private string? searchText;

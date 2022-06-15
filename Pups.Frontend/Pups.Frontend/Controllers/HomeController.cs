@@ -17,7 +17,7 @@ public class HomeController : Controller
     public IActionResult Index()
     {
         var signed = HttpContext.User.Identity!.IsAuthenticated;
-        if (signed) return Redirect("/Messenger");
+        // if (signed) return Redirect("/Messenger");
         return View();
     }
 
