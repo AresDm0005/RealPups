@@ -66,22 +66,30 @@ public class MsSqlChatService : IChatService
         return chat.Members!.Any(x => x.UserId == userId);
     }
 
-    private Task<bool> CheckOneUser(Guid userId)
+    private async Task<bool> CheckOneUser(Guid userId)
     {
-        return _msgContext.ChatMembers
+        var members = await _msgContext.ChatMembers
+            .AsNoTracking()
+            .ToListAsync();
+
+        return members
             .GroupBy(x => x.ChatId)
             .Where(x => x.Count() == 1)
-            .AnyAsync(x => x.First().UserId == userId);
+            .Any(x => x.First().UserId == userId);
     }
 
-    private Task<bool> CheckTwoUsers(ICollection<Guid> userIds)
+    private async Task<bool> CheckTwoUsers(ICollection<Guid> userIds)
     {
-        return _msgContext.ChatMembers
+        var members = await _msgContext.ChatMembers
+            .AsNoTracking()
+            .ToListAsync();
+        
+        return members
             .GroupBy(x => x.ChatId)
-            .Where(x => x.Count() == 2)
-            .Select(x => x
-                .Select(y => y.UserId)
+            .Where(x => x.Count() == 2)            
+            .Select(x => 
+                x.Select(y => y.UserId)
                 .ToHashSet())
-            .AnyAsync(x => x.SetEquals(userIds));
+            .Any(x => x.SetEquals(userIds));
     }
 }
