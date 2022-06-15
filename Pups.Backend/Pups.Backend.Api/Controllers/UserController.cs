@@ -61,6 +61,25 @@ public class UsersController : ControllerBase
         return Ok(user.AsDto());
     }
 
+    // GET /users/id
+    /// <summary>
+    /// Выполнить поиск по имени пользоваетеля
+    /// </summary>
+    /// <param name="userName" example="Tesk">Имя пользователя</param>
+    /// <returns>Пользователя</returns>
+    /// <response code="200"></response>
+    [HttpGet("FindUser/{userName}")]
+    [SwaggerResponse((int)HttpStatusCode.OK, Type = typeof(IEnumerable<UserDto>))]
+    public async Task<ActionResult<IEnumerable<UserDto>>> FindUser(string? userName)
+    {
+        if (userName is null)
+            return BadRequest();
+
+        var users = await _userService.FindUser(userName);
+
+        return Ok(users.Select(x => x.AsDto()));
+    }
+
     // POST /users
     /// <summary>
     /// Создать нового пользователя в контексте приложения

@@ -30,6 +30,14 @@ public class MsSqlUserService : IUserService
         return await _msgContext.Users.FindAsync(id);
     }
 
+    public async Task<IEnumerable<User>> FindUser(string userName)
+    {
+        return await _msgContext.Users
+            .Where(x => x.Username.ToLower().Contains(userName.ToLower()))
+            .AsNoTracking()
+            .ToListAsync();
+    }
+
     public async Task CreateUser(User user)
     {
         _msgContext.Users.Add(user);
