@@ -1,23 +1,34 @@
 @using Microsoft.AspNetCore.SignalR.Client
-@using Microsoft.AspNetCore.Mvc.Rendering
+@using Pups.Frontend.Models.Domain
 @inject NavigationManager NavigationManager
+@inject IHttpClientFactory ClientFactory
+@using Microsoft.AspNetCore.Identity
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject SignInManager<IdentityUser> SignInManager
+@inject UserManager<IdentityUser> UserManager
 @implements IAsyncDisposable
 
 <div class="row">
     <nav class="col-md-3">
+        <div class="input-group mb-3">
+                <input type="text" class="form-control" placeholder="Search" aria-label="Text..." aria-describedby="basic-addon2" @bind="@searchText">
+                <div class="input-group-append">
+                    <button class="btn btn-outline-secondary" type="button" @onclick="Search">Search</button>
+                </div>
+            </div>
         <ul class="chat-selector" style="list-style-type: none;">
             @for (int i = 0; i < 10; ++i)
             {
                 string message = $"Message{i}";
-                string username = $"Username{i}"; 
-                <li @onclick="() => SelectChat(i.ToString())"><ChatSelector Message=@message Username=@username ></ChatSelector></li>   
+                string username = $"Username{i}";
+                <li @onclick="() => SelectChat(i.ToString())"><ChatSelector Message=@message Username=@username></ChatSelector></li>
             }
         </ul>
     </nav>
     <div class="col-md-9">
         @if (chatSelect)
         {
-            <ChatWindow Url=@selectChatUrl></ChatWindow>
+            <ChatWindow Url=@selectChatUrl userName=@userName/>
         }
         else
         {
@@ -38,8 +49,19 @@
     private bool IsConnected => _hubConnection?.State == HubConnectionState.Connected;
     private bool chatSelect = false;
     private string? selectChatUrl = null;
+    private string userName;
+
+    private List<Chat> chats;
+
     protected override async Task OnInitializedAsync()
     {
+    // chats = await callChatApi(userId);
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        Console.WriteLine(authState.User.Identities);
+        foreach (var claim in authState.User.Identities)
+        {
+            Console.WriteLine(claim);   
+        }
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(NavigationManager.ToAbsoluteUri("/chathub"))
             .Build();
@@ -56,6 +78,8 @@
             _messages.Add(encodedMsg);
             InvokeAsync(StateHasChanged);
         });
+
+
         await _hubConnection.StartAsync();
     }
 
@@ -82,5 +106,15 @@
     {
         chatSelect = true;
         selectChatUrl = url;
+        var rnd = new Random();
+        userName = $"test{rnd.NextInt64(10)}";
     }
+
+    private string? searchText;
+
+    private void Search()
+    {
+        throw new NotImplementedException();
+    }
+
 }

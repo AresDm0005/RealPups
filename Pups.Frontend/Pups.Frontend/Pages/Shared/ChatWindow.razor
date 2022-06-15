@@ -1,26 +1,18 @@
 <div>
     <div class="row" style="background: #b4dbe7; height: 50px; width: 100%">
         <div style="right: 10px">
-            <!--i class="bi bi-arrow-left"></i-->
-            @userName
+            <strong>@userName</strong>
             <span class="online">
                 Последний раз в сети @date.Hour:@date.Minute
             </span>
         </div>
     </div>
-    <div style="height: 750px; width: 100%;">
+    <div style="background: #ffffff; height: 750px; width: 100%;">
         <nav>
-            <ul style="list-style-type: none;">
-                @for (int i = 0; i < 20; ++i)
+            <ul class="message-list">
+                @foreach (var message in messageList)
                 {
-                    if (i % 2 == 0)
-                    {
-                        <li class="self">Message @i</li>
-                    }
-                    else
-                    {
-                        <li class="other">Message @i</li>   
-                    }
+                    <li class="self">@message</li>
                 }
             </ul>
         </nav>
@@ -28,9 +20,9 @@
     
     <div>
         <div class="input-group mb-3">
-          <input type="text" class="form-control" placeholder="Text..." aria-label="Text..." aria-describedby="basic-addon2">
-          <div class="input-group-append">
-            <button class="btn btn-outline-secondary" type="button">Button</button>
+            <input type="text" class="form-control" placeholder="Text..." aria-label="Text..." aria-describedby="basic-addon2" @bind="@userMessage">
+            <div class="input-group-append">
+            <button class="btn btn-outline-secondary" type="button" @onclick="SendMessage">Send</button>
           </div>
         </div>
     </div>
@@ -40,6 +32,28 @@
     [Parameter]
     public string? Url { get; set; }
 
-    private string userName = "UserName";
+    [Parameter]
+    public string userName { get; set; } = "UserName";
+
+    public List<string> messageList = new List<string>();
+    
+    protected override void OnInitialized()
+    {
+        for (int i = 0; i < 25; ++i)
+        {
+            messageList.Add($"Message{i}");
+        }
+        base.OnInitialized();
+    }
+
+    private string userMessage = "";
+    
     private DateTime date = DateTime.Now;
+
+    public void SendMessage()
+    {
+        if (userMessage == "") return;
+        messageList.Add(userMessage);
+        userMessage = "";
+    }
 }

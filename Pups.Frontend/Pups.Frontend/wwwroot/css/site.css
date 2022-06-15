@@ -37,17 +37,30 @@ body {
   background-color: #808080;
 }
 
+.chat-card:focus {
+  color: #0a53be;
+}
+
 .chat-selector{
-  height:800px;
-  width:325px; /* TODO Dynamic size*/
+  height:785px;
+  width:325px; /* TODO Dynamic size */
   overflow:hidden; 
   overflow-y:scroll;
 }
 
 .self{
   text-align: right;
+  margin-right: 10px;
 }
 
 .other{
   text-align: left;
+  margin-left: 10px;
+}
+
+.message-list {
+  overflow:hidden;
+  overflow-y:scroll;
+  list-style-type:none;
+  height:750px;
 }

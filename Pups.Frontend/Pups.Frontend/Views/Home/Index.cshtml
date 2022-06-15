@@ -1,11 +1,20 @@
 ﻿@using Pups.Frontend.Pages.Shared
+@using Microsoft.AspNetCore.Identity
+@inject SignInManager<IdentityUser> SignInManager
+
 @{
     ViewData["Title"] = "Home Page";
 }
-<!--
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
--->
-@(await Html.RenderComponentAsync<ChatComponent>(RenderMode.ServerPrerendered))
+
+
+@if (SignInManager.IsSignedIn(User))
+{
+    @(await Html.RenderComponentAsync<ChatComponent>(RenderMode.ServerPrerendered))   
+}
+else
+{
+    <div class="text-center">
+        <h1 class="display-4">Welcome</h1>
+        <h3>Please <a href="/Identity/Account/Login">Login</a></h3>
+    </div>
+}
