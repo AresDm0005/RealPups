@@ -39,6 +39,25 @@ public class MessagesController : ControllerBase
         return Ok(msgs);
     }
 
+    // GET /messages/fromchat/{chatId}
+    /// <summary>
+    /// Получить список сообщений чата
+    /// </summary>
+    /// <returns>Коллекцию сообщений</returns>
+    [HttpGet("FromChat/{chatId}")]
+    [SwaggerResponse((int)HttpStatusCode.OK, Type = typeof(IEnumerable<MessageDto>))]
+    [SwaggerResponse((int)HttpStatusCode.NotFound)]
+    public async Task<ActionResult<IEnumerable<MessageDto>>> GetMessages(Guid chatId)
+    {
+        if (await _chatService.GetChat(chatId) is null)
+            return NotFound();
+
+        var msgs = (await _messageService.GetMessages(chatId))
+            .Select(x => x.AsDto());
+
+        return Ok(msgs);
+    }
+
     // GET /messages/id
     /// <summary>
     /// Получить конкретное сообщение по его ID
@@ -83,12 +102,15 @@ public class MessagesController : ControllerBase
         if (!isMember)
             return BadRequest();
 
-        if (messageDto.ReplyTo is not null)
+        if (messageDto.ReplyTo is not null && messageDto.ReplyTo != 0)
         {
             var existingMessage = await _messageService.GetMessage(messageDto.ReplyTo.Value);
             if (existingMessage is null)
                 return BadRequest();
         }
+
+        if (messageDto.ReplyTo == 0)
+            messageDto = messageDto with { ReplyTo = null };
 
         Message msg = new()
         {
