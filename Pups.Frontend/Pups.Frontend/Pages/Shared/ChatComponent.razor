@@ -1,0 +1,126 @@
+@using Pups.Frontend.Models.Domain
+@inject IHttpClientFactory ClientFactory
+@using System.Security.Claims
+@using Newtonsoft.Json
+@using Pups.Frontend.Models.Domain.Dtos
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<div class="row">
+    <nav class="col-md-3">
+        <ul class="chat-selector" style="list-style-type: none;">
+            @foreach (var chat in chatDictionary.Values.OrderBy(chatPrev => chatPrev.Message.SendAt))
+            {
+                <li @onclick="() => SelectChat(chat.Id.ToString())">
+                    <ChatSelector Message=@chat.Message
+                                  ChatName=@chat.ChatName
+                                  UserId=@userId />
+                </li>
+            }
+        </ul>
+    </nav>
+    <div class="col-md-9">
+        @if (chatSelect)
+        {
+            <ChatWindow Url=@selectChatUrl 
+                        ChatName=@chatDictionary[selectChatUrl].ChatName
+                        Members=@chatDictionary[selectChatUrl].Members.ToList()
+                        UserId=@userId/>
+        }
+        else
+        {
+            <canvas x="0" y="0" rx="5" ry="5" width="1000" height="800" style="fill:red;stroke:black;stroke-width:5;opacity:0.5;border:1px solid #000000;">
+            </canvas>
+        }
+    </div>
+</div>
+
+@code {
+    private bool chatSelect;
+    private Guid selectChatUrl;
+    private Dictionary<Guid, ChatPreview> chatDictionary = new();
+    private Dictionary<Guid, List<Message>> messagesDictionary = new();
+    private Guid? userId = null;
+
+    private async Task GetMessages(Guid id)
+    {
+        using (var client = ClientFactory.CreateClient("api"))
+        {
+            var responseUser = await client.GetAsync($"/Messages/FromChat/{id}");
+            if (responseUser.IsSuccessStatusCode)
+            {
+                var res = await responseUser.Content.ReadAsStringAsync();
+                var messageList = JsonConvert.DeserializeObject<List<Message>>(res);
+                messagesDictionary.Add(id, messageList);
+            }
+        }
+    }
+    
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var claimUserId = authState.User.Identities.Select(claimIdentity => claimIdentity.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.NameIdentifier)).FirstOrDefault();
+        userId = new Guid(claimUserId.Value);
+        
+        var chats = new Dictionary<Guid, chatDto>();
+        using (var client = ClientFactory.CreateClient("api"))
+        {
+            var responseUserChats = await client.GetAsync($"Chats/UserChats/{userId.Value}");
+            if (responseUserChats.IsSuccessStatusCode)
+            {
+                var res = responseUserChats.Content.ReadAsStringAsync().Result;
+                var chatsList = JsonConvert.DeserializeObject<List<chatDto>>(res);
+                foreach (var chat in chatsList)
+                {
+                    var chatItemResponse = await client.GetAsync($"Chats/{chat.Id}?includeMembers=true");
+                    if (chatItemResponse.IsSuccessStatusCode)
+                    {
+                        var result = chatItemResponse.Content.ReadAsStringAsync().Result;
+                        var chatItem = JsonConvert.DeserializeObject<chatDto>(result);
+                        if (chatItem is not null)
+                        {
+                            chats.Add(chatItem.Id, chatItem);
+                            await GetMessages(chatItem.Id);
+                        }
+                    }
+                }
+            }
+        }
+        foreach (var chat in chats)
+        {
+            var chatName = "DefaultChatName";
+            foreach (var member in chat.Value.Members)
+            {
+                if (member.UserId == userId)
+                    chatName = member.ChatName;
+            }
+            Message message = new();
+            if (messagesDictionary[chat.Key].Count != 0)
+                message = messagesDictionary[chat.Key][messagesDictionary[chat.Key].Count - 1];
+
+            chatDictionary.Add(chat.Key, new ChatPreview
+            {
+                Id = chat.Key,
+                ChatName = chatName,
+                Message = message,
+                Members = chat.Value.Members
+            });
+        }
+    }
+
+    public void SelectChat(string url)
+    {
+        chatSelect = true;
+        selectChatUrl = new Guid(url);
+    }
+
+    private string? searchText;
+
+    private void Search()
+    {
+        var keys = chatDictionary.Keys;
+        foreach (var key in keys)
+        {
+            chatDictionary.Remove(key);
+        }
+    }
+}

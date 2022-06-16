@@ -1,0 +1,83 @@
+@using NuGet.Packaging
+@using Newtonsoft.Json
+@using Pups.Frontend.Models.Domain
+@using System.Security.Claims
+@using Pups.Frontend.Models.Domain.Dtos
+@inject IHttpClientFactory ClientFactory
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavManager
+
+<div class="col-md-9">
+    <div class="input-group mb-3">
+        <input type="text" class="form-control" placeholder="Search" aria-label="Text..." aria-describedby="basic-addon2" @bind="@searchText">
+        <div class="input-group-append">
+            <button class="btn btn-outline-secondary" type="button" @onclick="Search">Search</button>
+        </div>
+    </div>
+    <ul style="list-style-type:none">
+        @foreach (var searchRes in searchResult)
+        {
+            <li>
+                <div class="card">
+                    <div class="card-header">@searchRes.Username</div>
+                    <div class="card-body">
+                        @searchRes.Email
+                        @searchRes.Info
+                        
+                        <div style="position: absolute; bottom: 10px; right: 10px; text-align:right;">
+                            <button type="button" class="btn btn-outline-success" @onclick="() => CreateChat(searchRes)">Create chat</button>
+                        </div>
+                    </div>
+                </div>
+            </li>
+        }
+    </ul>
+</div>
+
+
+@code {
+    private string searchText = "";
+    private List<User>? searchResult = new();
+
+    protected override Task OnInitializedAsync()
+    {
+        return base.OnInitializedAsync();
+    }
+
+    private async Task Search()
+    {
+        if (searchText=="") return;
+        using (var client = ClientFactory.CreateClient("api"))
+        {
+            var responseUser = await client.GetAsync($"/Users/FindUser/{searchText}");
+            if (responseUser.IsSuccessStatusCode)
+            {
+                var res = await responseUser.Content.ReadAsStringAsync();
+                searchResult = JsonConvert.DeserializeObject<List<User>>(res);
+            }
+        }
+    }
+
+    private async Task CreateChat(User user)
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var claimUserId = authState.User.Identities.Select(claimIdentity => claimIdentity.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.NameIdentifier)).FirstOrDefault();
+        if (claimUserId is null) return;
+        var creatorId = new Guid(claimUserId.Value);
+        using (var client = ClientFactory.CreateClient("api"))
+        {
+            var chatInfo = new CreateChatDto
+            {
+                CreatorId = creatorId,
+                CreatorChatName = user.Username,
+                CreatorChatStatusId = 1,
+                ContactId = user.Id
+            };
+            var responseUser = await client.PostAsJsonAsync("/Chats/Сhat", chatInfo);
+            if (responseUser.IsSuccessStatusCode || (int)responseUser.StatusCode == StatusCodes.Status400BadRequest)
+            {
+                NavManager.NavigateTo("~/"); // TODO not working redirect
+            }
+        }
+    }
+}

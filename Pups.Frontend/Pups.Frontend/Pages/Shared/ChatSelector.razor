@@ -1,0 +1,37 @@
+@using Pups.Frontend.Models.Domain
+<div class="card chat-card" style="width: 18rem;">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <span class="dot"></span>
+            </div>
+            <div class="col-md-6">
+                <h5 class="card-title">@ChatName</h5>
+                <p class="card-text">@Message.Payload</p>  
+            </div>
+            @if (Message is null)
+            {
+                <div style="position: absolute; top: 10px; right: 0; width: 100px; text-align:right;">
+                    @Message.SendAt.Hour : @Message.SendAt.Minute 
+                </div>   
+            }
+            @if (Message.CheckedAt is null && UserId!=Message.SenderId && Message.Chat is not null)
+            {
+                <div style="position: absolute; bottom: 10px; right: 10px; width: 100px; text-align:right;">
+                    <span class="dot-seen"></span>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string ChatName { get; set; }
+    
+    [Parameter]
+    public Message? Message { get; set; }
+    
+    [Parameter]
+    public Guid? UserId { get; set; }
+}
