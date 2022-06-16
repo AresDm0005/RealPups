@@ -1,7 +1,14 @@
 @using Pups.Frontend.Models.Domain
 @using Pups.Frontend.Models.Domain.Dtos
 @using Newtonsoft.Json
+@using System.Security.Claims
+@using Microsoft.AspNetCore.SignalR.Client
+@inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IHttpClientFactory ClientFactory
+@using Microsoft.AspNetCore.SignalR.Client
+@inject NavigationManager NavigationManager
+@implements IAsyncDisposable
+
 
 <div>
     <div class="row" style="background: #b4dbe7; height: 50px; width: 100%">
@@ -9,10 +16,13 @@
             <strong>@ChatName</strong>
             @if (Members.Count == 2)
             {
-                var online = secondUser.LastSeen;
-                <span class="online">
-                    Последний раз в сети @online.TimeOfDay
-                </span>   
+                if (secondUser is not null)
+                {
+                    var online = secondUser.LastSeen;
+                    <span class="online">
+                        Последний раз в сети @online.TimeOfDay
+                    </span>      
+                }
             }
         </div>
     </div>
@@ -44,64 +54,113 @@
     </div>
 </div>
 
-@code {
+@code{
     [Parameter]
-    public string? Url { get; set; }
+    public Guid Url { get; set; }
 
     [Parameter]
     public string ChatName { get; set; } = "UserName";
     
     [Parameter]
     public List<ChatMember> Members { get; set; }
+    
+    [Parameter]
+    public Guid? UserId { get; set; }
 
     private User? secondUser;
     private List<Message>? messageList = new List<Message>();
+    private HubConnection? hubConnection;
+    private bool IsConnected => hubConnection?.State == HubConnectionState.Connected;
+
     
-    private void GetUser()
+    private async Task GetUser()
     {
         using (var client = ClientFactory.CreateClient("api"))
         {
-            var responseUser = client.GetAsync($"Users/{Members[1].UserId}").Result;
+            ChatMember secondMember = Members.First(chatMember => chatMember.UserId != UserId);
+            var responseUser = await client.GetAsync($"Users/{secondMember.UserId}");
             if (responseUser.IsSuccessStatusCode)
             {
-                var res = responseUser.Content.ReadAsStringAsync().Result;
+                var res = await responseUser.Content.ReadAsStringAsync();
                 secondUser = JsonConvert.DeserializeObject<User>(res);
             }
         }
     }
     
-    private void GetMessages()
+    private async Task GetMessages()
     {
         using (var client = ClientFactory.CreateClient("api"))
         {
-            var responseUser = client.GetAsync($"/Messages/FromChat/{Url}").Result;
+            var responseUser = await client.GetAsync($"/Messages/FromChat/{Url}");
             if (responseUser.IsSuccessStatusCode)
             {
-                var res = responseUser.Content.ReadAsStringAsync().Result;
+                var res = await responseUser.Content.ReadAsStringAsync();
                 messageList = JsonConvert.DeserializeObject<List<Message>>(res);
             }
         }
     }
     
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        if(Members.Count==2)
-            GetUser();
-        GetMessages();
-        base.OnInitialized();
+        if (Members.Count==2)
+            await GetUser();
+        
+    #region Hub
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/ChatHub"))
+            .Build();
+        
+        hubConnection.On<Message>("ReceiveMessage", (message) =>
+        {
+            messageList.Add(message);
+            InvokeAsync(StateHasChanged);
+        });
+    #endregion
+        
+        await GetMessages();
+        await hubConnection.StartAsync();
+        
+        if (hubConnection is not null)
+            await hubConnection.SendAsync("RegisterUser", Url);
+        
+        await base.OnInitializedAsync();
     }
     
     private string userMessage = "";
     
     private DateTime date = DateTime.Now;
 
-    public void SendMessage()
+    public async Task SendMessage()
     {
         if (userMessage == "") return;
-        messageList.Add(new Message()
+        using (var client = ClientFactory.CreateClient("api"))
         {
-            Payload = userMessage
-        });
+            var sendMessage = new SendMessage
+            {
+                ChatId = Url,
+                SenderId = UserId ?? new Guid(),
+                ReplyTo = 0,
+                Payload = userMessage
+            };
+            var responseUser = await client.PostAsJsonAsync("Messages", sendMessage);
+            if (responseUser.IsSuccessStatusCode)
+            {
+                var res = await responseUser.Content.ReadAsStringAsync();
+                var message = JsonConvert.DeserializeObject<Message>(res);
+                if (hubConnection is not null)
+                {
+                    await hubConnection.SendAsync("SendGroupMessage", Url, message);
+                }
+                // messageList.Add(message);
+            }
+        }
         userMessage = "";
     }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+            await hubConnection.DisposeAsync();
+    }
+
 }

@@ -9,7 +9,7 @@
 
 @if (SignInManager.IsSignedIn(User))
 {
-    @(await Html.RenderComponentAsync<ChatComponent>(RenderMode.Server))   
+    @(await Html.RenderComponentAsync<ChatComponent>(RenderMode.ServerPrerendered))   
 }
 else
 {

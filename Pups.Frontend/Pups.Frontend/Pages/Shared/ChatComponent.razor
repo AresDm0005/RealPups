@@ -1,15 +1,9 @@
-@using Microsoft.AspNetCore.SignalR.Client
 @using Pups.Frontend.Models.Domain
-@inject NavigationManager NavigationManager
 @inject IHttpClientFactory ClientFactory
-@using Microsoft.AspNetCore.Identity
 @using System.Security.Claims
 @using Newtonsoft.Json
 @using Pups.Frontend.Models.Domain.Dtos
 @inject AuthenticationStateProvider AuthenticationStateProvider
-@inject SignInManager<IdentityUser> SignInManager
-@inject UserManager<IdentityUser> UserManager
-@implements IAsyncDisposable
 
 <div class="row">
     <nav class="col-md-3">
@@ -22,14 +16,14 @@
         <ul class="chat-selector" style="list-style-type: none;">
             @foreach (var chat in chatDictionary.Values)
             {
-                <li @onclick="() => SelectChat(chat.Id.ToString())"><ChatSelector Message=@chat.Message Username=@chat.ChatName></ChatSelector></li>
+                <li @onclick="() => SelectChat(chat.Id.ToString())"><ChatSelector Message=@chat.Message ChatName=@chat.ChatName ></ChatSelector></li>
             }
         </ul>
     </nav>
     <div class="col-md-9">
         @if (chatSelect)
         {
-            <ChatWindow Url=@selectChatUrl.ToString() ChatName=@chatDictionary[selectChatUrl].ChatName Members=@chatDictionary[selectChatUrl].Members.ToList()/>
+            <ChatWindow Url=@selectChatUrl ChatName=@chatDictionary[selectChatUrl].ChatName Members=@chatDictionary[selectChatUrl].Members.ToList() UserId=@userId/>
         }
         else
         {
@@ -42,21 +36,16 @@
 
 
 @code {
-    private HubConnection? _hubConnection;
-    private List<string> _messages = new List<string>();
-    private string? _userInput;
-    private string? _groupInput;
-    private string? _messageInput;
-    private bool IsConnected => _hubConnection?.State == HubConnectionState.Connected;
-    private bool chatSelect = false;
+    private bool chatSelect;
     private Guid selectChatUrl;
-    private Dictionary<Guid, ChatPreview> chatDictionary = new  Dictionary<Guid, ChatPreview>();
-    private List<Chat> chats;
+    private Dictionary<Guid, ChatPreview> chatDictionary = new();
+    private Guid? userId = null;
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var userId = authState.User.Identities.Select(claimIdentity => claimIdentity.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.NameIdentifier)).FirstOrDefault();
+        var claimUserId = authState.User.Identities.Select(claimIdentity => claimIdentity.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.NameIdentifier)).FirstOrDefault();
+        userId = new Guid(claimUserId.Value);
         
         var chats = new Dictionary<Guid, chatDto>();
         using (var client = ClientFactory.CreateClient("api"))
@@ -81,59 +70,24 @@
         }
         foreach (var chat in chats)
         {
+            var chatName = "DefaultChatName";
+            foreach (var member in chat.Value.Members)
+            {
+                if(userId is null) break;
+                if (member.UserId == userId)
+                    chatName = member.ChatName;
+            }
             chatDictionary.Add(chat.Key, new ChatPreview()
             {
                 Id = chat.Key,
-                ChatName = chat.Value.Members.ToList()[0].ChatName,
+                ChatName = chatName,
                 Message = new Message(), // TODO
                 Members = chat.Value.Members
             });
         }
-        
-        #region Hub
-
-        _hubConnection = new HubConnectionBuilder()
-            .WithUrl(NavigationManager.ToAbsoluteUri("/chathub"))
-            .Build();
-        
-        _hubConnection.On<string, string>("ReceiveMessage", (user, message) =>
-        {
-            var encodedMsg = $"{user}: {message}";
-            _messages.Add(encodedMsg);
-            InvokeAsync(StateHasChanged);
-        });
-        _hubConnection.On<string, string>("ReceiveGroupMessage", (user, message) =>
-        {
-            var encodedMsg = $"group {user}: {message}";
-            _messages.Add(encodedMsg);
-            InvokeAsync(StateHasChanged);
-        });
-
-        #endregion
-
-        await _hubConnection.StartAsync();
     }
 
-    private async Task Send()
-    {
-        if (_hubConnection is not null)
-        {
-            if(_groupInput is not null)
-                await _hubConnection.SendAsync("SendGroupMessage", _userInput, _groupInput, _messageInput);
-            else
-                await _hubConnection.SendAsync("SendMessage", _userInput, _messageInput);
-        }
-    }
-    
-    public async ValueTask DisposeAsync()
-    {
-        if (_hubConnection is not null)
-        {
-            await _hubConnection.DisposeAsync();
-        }
-    }
-
-    public async Task SelectChat(string url)
+    public void SelectChat(string url)
     {
         chatSelect = true;
         selectChatUrl = new Guid(url);

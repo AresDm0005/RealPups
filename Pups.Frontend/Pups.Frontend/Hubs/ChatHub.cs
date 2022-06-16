@@ -1,16 +1,16 @@
 using Microsoft.AspNetCore.SignalR;
+using Pups.Frontend.Models.Domain;
 
 namespace Pups.Frontend.Hubs;
 
 public class ChatHub : Hub
 {
-    public async Task SendMessage(string user, string message)
+    public async Task RegisterUser(Guid groupName)
     {
-        await Clients.All.SendAsync("ReceiveMessage", user, message);
+        await Groups.AddToGroupAsync(Context.ConnectionId, groupName.ToString());
     }
-    public async Task SendGroupMessage(string user, string groupName, string message)
+    public async Task SendGroupMessage(Guid groupName, Message message)
     {
-        await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
-        await Clients.Group(groupName).SendAsync("ReceiveGroupMessage", user, message);
+        await Clients.Group(groupName.ToString()).SendAsync("ReceiveMessage", message);
     }
 }
