@@ -7,23 +7,24 @@
 
 <div class="row">
     <nav class="col-md-3">
-        <div class="input-group mb-3">
-                <input type="text" class="form-control" placeholder="Search" aria-label="Text..." aria-describedby="basic-addon2" @bind="@searchText">
-                <div class="input-group-append">
-                    <button class="btn btn-outline-secondary" type="button" @onclick="Search">Search</button>
-                </div>
-            </div>
         <ul class="chat-selector" style="list-style-type: none;">
-            @foreach (var chat in chatDictionary.Values)
+            @foreach (var chat in chatDictionary.Values.OrderBy(chatPrev => chatPrev.Message.SendAt))
             {
-                <li @onclick="() => SelectChat(chat.Id.ToString())"><ChatSelector Message=@chat.Message ChatName=@chat.ChatName ></ChatSelector></li>
+                <li @onclick="() => SelectChat(chat.Id.ToString())">
+                    <ChatSelector Message=@chat.Message
+                                  ChatName=@chat.ChatName
+                                  UserId=@userId />
+                </li>
             }
         </ul>
     </nav>
     <div class="col-md-9">
         @if (chatSelect)
         {
-            <ChatWindow Url=@selectChatUrl ChatName=@chatDictionary[selectChatUrl].ChatName Members=@chatDictionary[selectChatUrl].Members.ToList() UserId=@userId/>
+            <ChatWindow Url=@selectChatUrl 
+                        ChatName=@chatDictionary[selectChatUrl].ChatName
+                        Members=@chatDictionary[selectChatUrl].Members.ToList()
+                        UserId=@userId/>
         }
         else
         {
@@ -33,14 +34,27 @@
     </div>
 </div>
 
-
-
 @code {
     private bool chatSelect;
     private Guid selectChatUrl;
     private Dictionary<Guid, ChatPreview> chatDictionary = new();
+    private Dictionary<Guid, List<Message>> messagesDictionary = new();
     private Guid? userId = null;
 
+    private async Task GetMessages(Guid id)
+    {
+        using (var client = ClientFactory.CreateClient("api"))
+        {
+            var responseUser = await client.GetAsync($"/Messages/FromChat/{id}");
+            if (responseUser.IsSuccessStatusCode)
+            {
+                var res = await responseUser.Content.ReadAsStringAsync();
+                var messageList = JsonConvert.DeserializeObject<List<Message>>(res);
+                messagesDictionary.Add(id, messageList);
+            }
+        }
+    }
+    
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
@@ -62,8 +76,11 @@
                     {
                         var result = chatItemResponse.Content.ReadAsStringAsync().Result;
                         var chatItem = JsonConvert.DeserializeObject<chatDto>(result);
-                        if(chatItem is not null)
+                        if (chatItem is not null)
+                        {
                             chats.Add(chatItem.Id, chatItem);
+                            await GetMessages(chatItem.Id);
+                        }
                     }
                 }
             }
@@ -73,15 +90,18 @@
             var chatName = "DefaultChatName";
             foreach (var member in chat.Value.Members)
             {
-                if(userId is null) break;
                 if (member.UserId == userId)
                     chatName = member.ChatName;
             }
-            chatDictionary.Add(chat.Key, new ChatPreview()
+            Message message = new();
+            if (messagesDictionary[chat.Key].Count != 0)
+                message = messagesDictionary[chat.Key][messagesDictionary[chat.Key].Count - 1];
+
+            chatDictionary.Add(chat.Key, new ChatPreview
             {
                 Id = chat.Key,
                 ChatName = chatName,
-                Message = new Message(), // TODO
+                Message = message,
                 Members = chat.Value.Members
             });
         }
@@ -97,7 +117,10 @@
 
     private void Search()
     {
-        throw new NotImplementedException();
+        var keys = chatDictionary.Keys;
+        foreach (var key in keys)
+        {
+            chatDictionary.Remove(key);
+        }
     }
-
 }

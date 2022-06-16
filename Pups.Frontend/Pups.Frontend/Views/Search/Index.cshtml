@@ -1,0 +1,10 @@
+@using Pups.Frontend.Pages.Shared
+@model dynamic
+
+@{
+    ViewBag.Title = "Search";
+    Layout = "_Layout";
+}
+
+<h2>Search</h2>
+@(await Html.RenderComponentAsync<SearchComponent>(RenderMode.ServerPrerendered))   

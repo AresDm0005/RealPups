@@ -9,10 +9,13 @@
                 <h5 class="card-title">@ChatName</h5>
                 <p class="card-text">@Message.Payload</p>  
             </div>
-            <div style="position: absolute; top: 10px; right: 0; width: 100px; text-align:right;">
-                @Message.SendAt.Hour : @Message.SendAt.Minute 
-            </div>
-            @if (Message.CheckedAt is not null)
+            @if (Message is null)
+            {
+                <div style="position: absolute; top: 10px; right: 0; width: 100px; text-align:right;">
+                    @Message.SendAt.Hour : @Message.SendAt.Minute 
+                </div>   
+            }
+            @if (Message.CheckedAt is null && UserId!=Message.SenderId && Message.Chat is not null)
             {
                 <div style="position: absolute; bottom: 10px; right: 10px; width: 100px; text-align:right;">
                     <span class="dot-seen"></span>
@@ -27,5 +30,8 @@
     public string ChatName { get; set; }
     
     [Parameter]
-    public Message Message { get; set; }
+    public Message? Message { get; set; }
+    
+    [Parameter]
+    public Guid? UserId { get; set; }
 }
