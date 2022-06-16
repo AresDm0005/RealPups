@@ -22,7 +22,7 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
         builder.Property(e => e.Edited).HasColumnName("edited");
 
         builder.Property(e => e.Payload)
-            .HasColumnType("text")
+            .HasColumnType("nvarchar(MAX)")
             .HasColumnName("payload");
 
         builder.Property(e => e.ReplyTo).HasColumnName("reply_to");

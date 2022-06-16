@@ -144,12 +144,14 @@ namespace Pups.Frontend.Areas.Identity.Pages.Account
                         values: new { area = "Identity", userId = userId, code = code, returnUrl = returnUrl },
                         protocol: Request.Scheme);
 
+                    /*
                     await _emailSender.SendEmailAsync(Input.Email, "Confirm your email",
                         $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
-
+                    */
                     
                     await SendApiCreateUserRequest(userId);
-                    
+                    await SendEmailConfirm(userId, code);
+
 
                     if (_userManager.Options.SignIn.RequireConfirmedAccount)
                     {
@@ -169,6 +171,24 @@ namespace Pups.Frontend.Areas.Identity.Pages.Account
 
             // If we got this far, something failed, redisplay form
             return Page();
+        }
+
+        private async Task SendEmailConfirm(string userId, string code)
+        {
+            using HttpClient client = _clientFactory.CreateClient("api");
+
+            var confirmationSend = new 
+            {
+                UserId = Guid.Parse(userId),
+                Code = code
+            };
+
+            var send = JsonSerializer.Serialize(confirmationSend);
+
+            var requestBody = new StringContent(send, Encoding.UTF8, "application/json");
+
+            var response = await client.PostAsync("Emails/Send/Confirmation", requestBody);
+            response.EnsureSuccessStatusCode();
         }
 
         private async Task SendApiCreateUserRequest(string userId)

@@ -14,7 +14,7 @@ public class ChatMemberConfiguration : IEntityTypeConfiguration<ChatMember>
         builder.Property(e => e.ChatId).HasColumnName("chat_id");
 
         builder.Property(e => e.ChatName)
-            .HasMaxLength(50)
+            .HasColumnType("nvarchar(50)")
             .HasColumnName("chat_name");
 
         builder.Property(e => e.ChatStatusId).HasColumnName("chat_status");
