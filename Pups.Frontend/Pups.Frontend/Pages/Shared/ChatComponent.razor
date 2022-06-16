@@ -8,7 +8,7 @@
 <div class="row">
     <nav class="col-md-3">
         <ul class="chat-selector" style="list-style-type: none;">
-            @foreach (var chat in chatDictionary.Values.OrderBy(chatPrev => chatPrev.Message.SendAt))
+            @foreach (var chat in chatDictionary.Values.OrderByDescending(chatPrev => chatPrev.Message.SendAt))
             {
                 <li @onclick="() => SelectChat(chat.Id.ToString())">
                     <ChatSelector Message=@chat.Message
@@ -54,12 +54,25 @@
             }
         }
     }
-    
+
+    public async Task UserOnline()
+    {
+        using (var client = ClientFactory.CreateClient("api"))
+        {
+            var updUser = new UpdateUserDto
+            {
+                LastSeen = DateTime.Now
+            };
+            // var responseUserChats = await client.PostAsJsonAsync($"/Users/{userId}", updUser);
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         var claimUserId = authState.User.Identities.Select(claimIdentity => claimIdentity.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.NameIdentifier)).FirstOrDefault();
         userId = new Guid(claimUserId.Value);
+        await UserOnline();
         
         var chats = new Dictionary<Guid, chatDto>();
         using (var client = ClientFactory.CreateClient("api"))
@@ -109,6 +122,7 @@
 
     public void SelectChat(string url)
     {
+        chatSelect = false;
         chatSelect = true;
         selectChatUrl = new Guid(url);
     }

@@ -86,6 +86,14 @@
                 var res = await responseUser.Content.ReadAsStringAsync();
                 messageList = JsonConvert.DeserializeObject<List<Message>>(res);
             }
+
+            foreach (var message in messageList)
+            {
+                if (message.CheckedAt is null)
+                {
+                    var responseSeen = await client.PatchAsync($"Message/{message.Id}", null);
+                }
+            }
         }
     }
     
@@ -103,11 +111,36 @@
         }
     }
 
-    protected override async Task OnInitializedAsync()
+    // protected override void OnParametersSet()
+    // {
+    //     InvokeAsync(StateHasChanged);
+    //     base.OnParametersSet();
+    // }
+
+    public override Task SetParametersAsync(ParameterView parameters)
     {
+        
+        return base.SetParametersAsync(parameters);
+    }
+
+    private async Task InitMessages()
+    {
+        messageList = new List<Message>();
         if (Members.Count==2)
             await GetUser();
-        
+        await GetMessages();
+        if (hubConnection is not null)
+            await hubConnection.SendAsync("RegisterUser", Url);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await InitMessages();
+        // base.OnAfterRenderAsync(firstRender);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
         #region Hub
         hubConnection = new HubConnectionBuilder()
             .WithUrl(NavigationManager.ToAbsoluteUri("/ChatHub"))
@@ -120,12 +153,8 @@
         });
         #endregion
         
-        await GetMessages();
+        
         await hubConnection.StartAsync();
-        
-        if (hubConnection is not null)
-            await hubConnection.SendAsync("RegisterUser", Url);
-        
         await base.OnInitializedAsync();
     }
     
@@ -160,6 +189,7 @@
     {
         if (hubConnection is not null)
             await hubConnection.DisposeAsync();
+        messageList = new List<Message>();
     }
 
 }
